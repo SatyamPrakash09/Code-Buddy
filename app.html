@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CODE BUDDY AI - Code Vulnerability Detection</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 25%, #2a2f4a 50%, #1a1f3a 75%, #0a0e27 100%);
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+      /* overflow: hidden; */
+    }
+
+    /* Animated binary background */
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: 
+        radial-gradient(circle at 25% 25%, rgba(0, 162, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(0, 162, 255, 0.05) 0%, transparent 50%);
+      animation: float 20s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(1deg); }
+    }
+
+    /* Binary rain effect */
+    .binary-rain {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      opacity: 0.1;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      color: #00a2ff;
+      z-index: 1;
+    }
+
+    .binary-column {
+      position: absolute;
+      animation: rain 15s linear infinite;
+    }
+
+    @keyframes rain {
+      0% { transform: translateY(-100vh); }
+      100% { transform: translateY(100vh); }
+    }
+
+    .container {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 30px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .title {
+      color: #ffffff;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      font-weight: 700;
+      margin-bottom: 10px;
+      text-shadow: 0 0 20px rgba(0, 162, 255, 0.5);
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: #8cc8ff;
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      font-weight: 300;
+      margin-bottom: 20px;
+    }
+
+    .security-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, rgba(255, 67, 67, 0.2), rgba(255, 67, 67, 0.1));
+      border: 1px solid rgba(255, 67, 67, 0.3);
+      padding: 8px 16px;
+      border-radius: 20px;
+      color: #ff6b6b;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .security-icon {
+      width: 16px;
+      height: 16px;
+      background: #ff6b6b;
+      border-radius: 50%;
+      position: relative;
+    }
+
+    .security-icon::before {
+      content: '⚠';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 10px;
+    }
+
+    .chatbot-container {
+      width: 100%;
+      max-width: 1000px;
+      height: 70vh;
+      min-height: 500px;
+      max-height: 900px;
+      background: rgba(15, 25, 45, 0.4);
+      backdrop-filter: blur(20px);
+      border-radius: 24px;
+      border: 1px solid rgba(0, 162, 255, 0.2);
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(0, 162, 255, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chatbot-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0, 162, 255, 0.8), transparent);
+      animation: scan 3s ease-in-out infinite;
+    }
+
+    @keyframes scan {
+      0%, 100% { opacity: 0; }
+      50% { opacity: 1; }
+    }
+
+    .iframe-wrapper {
+      width: 100%;
+      height: 100%;
+      border-radius: 24px;
+      overflow: hidden;
+      position: relative;
+      min-height: 0;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #ffffff;
+      display: block;
+      border-radius: 24px;
+    }
+
+    /* Loading animation */
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #00a2ff;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 10;
+      background: rgba(15, 25, 45, 0.9);
+      padding: 20px 30px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 162, 255, 0.3);
+    }
+
+    .loading::after {
+      content: '';
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(0, 162, 255, 0.3);
+      border-top: 2px solid #00a2ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #00ff88;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .container {
+        padding: 0 15px;
+        gap: 20px;
+      }
+      
+      .chatbot-container {
+        height: 70vh;
+        min-height: 500px;
+        border-radius: 16px;
+      }
+      
+      .iframe-wrapper {
+        border-radius: 16px;
+      }
+      
+      iframe {
+        border-radius: 16px;
+      }
+      
+      .title {
+        font-size: 2rem;
+      }
+      
+      .subtitle {
+        font-size: 1rem;
+      }
+    }
+
+    @media (min-width: 1200px) {
+      .chatbot-container {
+        max-width: 1200px;
+        height: 75vh;
+        max-height: 900px;
+      }
+    }
+
+    @media (min-width: 1600px) {
+      .chatbot-container {
+        max-width: 1400px;
+        height: 80vh;
+        max-height: 1000px;
+      }
+    }
+
+    /* Hover effects */
+    .chatbot-container:hover {
+      box-shadow: 
+        0 32px 64px -12px rgba(0, 0, 0, 0.7),
+        0 0 0 1px rgba(0, 162, 255, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+      transition: all 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <!-- Binary rain effect -->
+  <div class="binary-rain" id="binaryRain"></div>
+
+  <div class="container">
+    <div class="header">
+      <h1 class="title">🤖 CODE BUDDY AI</h1>
+      <p class="subtitle">Advanced Code Vulnerability Detection & Analysis</p>
+      <div class="security-badge">
+        <div class="security-icon"></div>
+        Threat Assessment Active
+      </div>
+    </div>
+
+    <div class="chatbot-container">
+      <div class="iframe-wrapper">
+        <div class="loading" id="loadingIndicator">
+          Initializing security protocols
+        </div>
+        <iframe
+          src="https://satyamprakash09-code-buddy.hf.space"
+          title="CODE BUDDY AI - Code Vulnerability Analysis Chatbot"
+          onload="document.getElementById('loadingIndicator').style.display = 'none'"
+          allow="clipboard-write; microphone; camera"
+          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+        ></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Create animated binary rain effect
+    function createBinaryRain() {
+      const binaryRain = document.getElementById('binaryRain');
+      const columns = Math.floor(window.innerWidth / 20);
+      
+      for (let i = 0; i < columns; i++) {
+        const column = document.createElement('div');
+        column.className = 'binary-column';
+        column.style.left = `${i * 20}px`;
+        column.style.animationDelay = `${Math.random() * 15}s`;
+        column.style.animationDuration = `${15 + Math.random() * 10}s`;
+        
+        // Generate random binary string
+        let binaryString = '';
+        for (let j = 0; j < 50; j++) {
+          binaryString += Math.random() > 0.5 ? '1' : '0';
+          if (j % 8 === 7) binaryString += '<br>';
+        }
+        
+        column.innerHTML = binaryString;
+        binaryRain.appendChild(column);
+      }
+    }
+
+    // Initialize effects when page loads
+    window.addEventListener('load', () => {
+      createBinaryRain();
+      
+      // Add some interactive particles on mouse move
+      document.addEventListener('mousemove', (e) => {
+        if (Math.random() > 0.95) {
+          const particle = document.createElement('div');
+          particle.style.position = 'fixed';
+          particle.style.left = e.clientX + 'px';
+          particle.style.top = e.clientY + 'px';
+          particle.style.width = '2px';
+          particle.style.height = '2px';
+          particle.style.background = '#00a2ff';
+          particle.style.borderRadius = '50%';
+          particle.style.pointerEvents = 'none';
+          particle.style.zIndex = '5';
+          particle.style.animation = 'particle 1s ease-out forwards';
+          
+          document.body.appendChild(particle);
+          
+          setTimeout(() => {
+            particle.remove();
+          }, 1000);
+        }
+      });
+    });
+
+    // Add particle animation
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes particle {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(0);
+          opacity: 0;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
+</body>
+</html>
